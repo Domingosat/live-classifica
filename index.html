@@ -3,37 +3,261 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    html, body {
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    html, body {
+      width: 500px;
+      height: 800px;
       background: transparent;
+      overflow: hidden;
+    }
+    #container {
+      width: 480px;
+      margin: 10px;
+      background: rgba(15, 23, 42, 0.94);
+      color: #ffffff;
+      border-radius: 12px;
+      border-top: 4px solid #22c55e;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65);
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-15px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    #container.visibile {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .header {
+      background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #22c55e;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header span.badge {
+      font-size: 11px;
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    #contenuto {
+      padding: 8px 12px 14px 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      text-align: center;
+      padding: 7px 4px;
+      color: #94a3b8;
+      font-size: 11px;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    th.left, td.left {
+      text-align: left;
+      padding-left: 6px;
+    }
+    td {
+      text-align: center;
+      padding: 7px 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-weight: 500;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    td.bold {
+      font-weight: 800;
+      color: #22c55e;
+      font-size: 14px;
+    }
+    .team-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+    .team-cell img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+    }
+    /* Stile Partita Singola / Risultati */
+    .match-card {
+      padding: 16px 10px;
+      text-align: center;
+    }
+    .match-date {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    .match-teams {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .match-team {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .match-team img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+    }
+    .match-score {
+      font-size: 28px;
+      font-weight: 900;
+      background: #1e293b;
+      padding: 8px 16px;
+      border-radius: 8px;
+      color: #22c55e;
+      letter-spacing: 2px;
     }
   </style>
 </head>
 <body>
+
+  <div id="container">
+    <div class="header">
+      <span id="titolo">CLASSIFICA</span>
+      <span class="badge">LIVE</span>
+    </div>
+    <div id="contenuto"></div>
+  </div>
+
   <script>
-    const ID_WIDGET = "1e9d8f8b-99b5-4157-b238-9be13f64529d";
-    const MAPPA = {
-      "CLASSIFICA": "https://tuttocampo.it" + ID_WIDGET,
-      "RISULTATI":  "https://tuttocampo.it" + ID_WIDGET,
-      "MARCATORI":  "https://tuttocampo.it" + ID_WIDGET,
-      "ULTIMA":     "https://tuttocampo.it" + ID_WIDGET,
-      "PROSSIMA":   "https://tuttocampo.it" + ID_WIDGET
+    const WIDGET_ID = "1e9d8f8b-99b5-4157-b238-9be13f64529d";
+    const ENDPOINTS = {
+      "CLASSIFICA": { titolo: "Classifica Campionato", url: `https://tuttocampo.it{WIDGET_ID}` },
+      "RISULTATI":  { titolo: "Risultati Giornata",    url: `https://tuttocampo.it{WIDGET_ID}` },
+      "MARCATORI":  { titolo: "Classifica Marcatori",  url: `https://tuttocampo.it{WIDGET_ID}` },
+      "ULTIMA":     { titolo: "Ultima Partita",        url: `https://tuttocampo.it{WIDGET_ID}` },
+      "PROSSIMA":   { titolo: "Prossima Partita",      url: `https://tuttocampo.it{WIDGET_ID}` }
     };
 
-    const params = new URLSearchParams(window.location.search);
-    const ultimoComando = params.get('stato') || "OFF";
+    const container = document.getElementById('container');
+    const titoloEl = document.getElementById('titolo');
+    const contenutoEl = document.getElementById('contenuto');
+    let statoAttuale = "OFF";
+
+    async function scaricaDatiTuttocampo(targetUrl) {
+      const proxyUrl = `https://allorigins.win{encodeURIComponent(targetUrl)}&t=${Date.now()}`;
+      const res = await fetch(proxyUrl);
+      const data = await res.json();
+      const parser = new DOMParser();
+      return parser.parseFromString(data.contents, 'text/html');
+    }
+
+    function estraiTabella(doc, maxRighe = 15) {
+      const table = doc.querySelector('table');
+      if (!table) return "<p style='padding:15px;text-align:center;'>Dati non disponibili</p>";
+      
+      let html = "<table>";
+      const rows = Array.from(table.querySelectorAll('tr')).slice(0, maxRighe + 1);
+      
+      rows.forEach((tr, idx) => {
+        const cells = Array.from(tr.querySelectorAll('th, td'));
+        if (cells.length === 0) return;
+        html += "<tr>";
+        cells.forEach((cell, cIdx) => {
+          const isHeader = cell.tagName === 'TH' || idx === 0;
+          const img = cell.querySelector('img');
+          const text = cell.textContent.trim();
+          const alignClass = (cIdx === 0 || text.length > 4) ? 'left' : '';
+          const boldClass = (!isHeader && cIdx === 1 && !isNaN(text)) ? 'bold' : '';
+
+          if (isHeader) {
+            html += `<th class="${alignClass}">${text}</th>`;
+          } else if (img) {
+            const src = img.getAttribute('src').startsWith('http') ? img.getAttribute('src') : 'https://tuttocampo.it' + img.getAttribute('src');
+            html += `<td class="left"><div class="team-cell"><img src="${src}"><span>${text}</span></div></td>`;
+          } else {
+            html += `<td class="${alignClass} ${boldClass}">${text}</td>`;
+          }
+        });
+        html += "</tr>";
+      });
+      html += "</table>";
+      return html;
+    }
+
+    async function aggiornaGrafica(comando) {
+      const config = ENDPOINTS[comando];
+      if (!config) return;
+
+      try {
+        const doc = await scaricaDatiTuttocampo(config.url);
+        titoloEl.textContent = config.titolo;
+
+        if (comando === "ULTIMA" || comando === "PROSSIMA") {
+          const teams = Array.from(doc.querySelectorAll('.team-name, a, span')).map(e => e.textContent.trim()).filter(t => t.length > 2 && !t.includes('tuttocampo') && !t.includes('Partita'));
+          const imgs = Array.from(doc.querySelectorAll('img')).map(i => i.getAttribute('src')).filter(s => s && !s.includes('logo_tc'));
+          const scoreEl = doc.body.textContent.match(/\d+\s*-\s*\d+/);
+          const score = scoreEl ? scoreEl[0] : "VS";
+          const dateEl = doc.body.textContent.match(/(Sab\.|Dom\.|Mer\.|Ven\.|Lun\.|Mar\.|Gio\.)[^\n]+/);
+          const dataMatch = dateEl ? dateEl[0].trim() : "";
+
+          const img1 = imgs[0] ? (imgs[0].startsWith('http') ? imgs[0] : 'https://tuttocampo.it' + imgs[0]) : '';
+          const img2 = imgs[1] ? (imgs[1].startsWith('http') ? imgs[1] : 'https://tuttocampo.it' + imgs[1]) : '';
+
+          contenutoEl.innerHTML = `
+            <div class="match-card">
+              <div class="match-date">${dataMatch}</div>
+              <div class="match-teams">
+                <div class="match-team">${img1 ? `<img src="${img1}">` : ''}<span>${teams[0] || 'Casa'}</span></div>
+                <div class="match-score">${score}</div>
+                <div class="match-team">${img2 ? `<img src="${img2}">` : ''}<span>${teams[1] || 'Ospite'}</span></div>
+              </div>
+            </div>`;
+        } else {
+          contenutoEl.innerHTML = estraiTabella(doc, comando === "MARCATORI" ? 12 : 16);
+        }
+
+        container.classList.add('visibile');
+      } catch (err) {
+        console.error(err);
+      }
+    }
 
     async function controllaStato() {
       try {
         const risposta = await fetch('stato.txt?t=' + Date.now());
         const comando = (await risposta.text()).trim().toUpperCase();
 
-        if (comando !== ultimoComando) {
-          if (MAPPA[comando]) {
-            window.location.href = MAPPA[comando];
+        if (comando !== statoAttuale) {
+          statoAttuale = comando;
+          if (ENDPOINTS[comando]) {
+            container.classList.remove('visibile');
+            await aggiornaGrafica(comando);
           } else {
-            window.location.href = window.location.pathname + "?stato=OFF";
+            container.classList.remove('visibile');
           }
         }
       } catch (e) {}
