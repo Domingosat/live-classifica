@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+      width: 500px;
+      height: 800px;
+    }
+    .widget-box {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 500px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
+    }
+    .widget-box.visibile {
+      opacity: 1;
+      visibility: visible;
+    }
+    iframe {
+      width: 500px;
+      border: none;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. CLASSIFICA -->
+  <div id="CLASSIFICA" class="widget-box">
+    <iframe src="https://tuttocampo.it" height="800" scrolling="no"></iframe>
+  </div>
+
+  <!-- 2. RISULTATI -->
+  <div id="RISULTATI" class="widget-box">
+    <iframe src="https://tuttocampo.it" height="600" scrolling="no"></iframe>
+  </div>
+
+  <!-- 3. MARCATORI -->
+  <div id="MARCATORI" class="widget-box">
+    <iframe src="https://tuttocampo.it" height="700" scrolling="no"></iframe>
+  </div>
+
+  <!-- 4. ULTIMA PARTITA -->
+  <div id="ULTIMA" class="widget-box">
+    <iframe src="https://tuttocampo.it" height="350" scrolling="no"></iframe>
+  </div>
+
+  <!-- 5. PROSSIMA PARTITA -->
+  <div id="PROSSIMA" class="widget-box">
+    <iframe src="https://tuttocampo.it" height="350" scrolling="no"></iframe>
+  </div>
+
+  <script>
+    const boxes = document.querySelectorAll('.widget-box');
+
+    async function controllaStato() {
+      try {
+        const risposta = await fetch('stato.txt?t=' + Date.now());
+        const comando = (await risposta.text()).trim().toUpperCase();
+
+        boxes.forEach(box => {
+          if (box.id === comando) {
+            box.classList.add('visibile');
+          } else {
+            box.classList.remove('visibile');
+          }
+        });
+      } catch (e) {}
+    }
+
+    setInterval(controllaStato, 3000);
+    controllaStato();
+  </script>
+</body>
+</html>
